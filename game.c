@@ -19,8 +19,8 @@ struct Food {
 };
 
 struct SnakeNode {
-	Snake snake;
-	SnakeNode* next;
+	struct Snake snake;
+	struct SnakeNode* next;
 };
 
 enum Direction {
@@ -34,37 +34,38 @@ float minCooldown = 0.08f;
 float cooldown = 0.2f;
 float timer;
 
-Food* food;
+struct Food* food;
 
 bool dead = false;
 int score = 0;
 
-Direction currentDir;
+int currentDir;
 
-SnakeNode* head;
+struct SnakeNode* head;
 
 
-void DrawFood(Food food) {
+void DrawFood(struct Food food) {
 	int size = (int)(TILE_SIZE * 0.5);
 
 	DrawRectangle(food.x * TILE_SIZE + size / 2, food.y * TILE_SIZE + size / 2, size, size, ORANGE);
 }
 
-Food GenNewFood() {
+struct Food GenNewFood() {
 	int width = WIDTH / TILE_SIZE;
 	int height = HEIGHT / TILE_SIZE - 2;
 
 	int x = rand() % width;
 	int y = rand() % (height) + 2;
-
-	return { x, y };
+	
+	struct Food newFood = { x, y };
+	return newFood;
 }
 
-int GetCount(SnakeNode* head) {
+int GetCount(struct SnakeNode* head) {
 	int count = 0;
-	SnakeNode* current = head;
+	struct SnakeNode* current = head;
 
-	while (current != NULL) {
+	while (current) {
 		count++;
 		current = current->next;
 	}
@@ -72,12 +73,12 @@ int GetCount(SnakeNode* head) {
 	return count;
 }
 
-void DrawSnakeBit(SnakeNode* node) {
+void DrawSnakeBit(struct SnakeNode* node) {
 	DrawRectangle(node->snake.x * TILE_SIZE, node->snake.y * TILE_SIZE, TILE_SIZE, TILE_SIZE, SNAKE_COLOR);
 }
 
-void DrawSnake(SnakeNode* head) {
-	SnakeNode* temp = head;
+void DrawSnake(struct SnakeNode* head) {
+	struct SnakeNode* temp = head;
 
 	while(temp) {
 		DrawSnakeBit(temp);
@@ -89,18 +90,18 @@ void DrawSnake(SnakeNode* head) {
 }
 
 
-SnakeNode* AddSnakeBit(Snake bit) {
-	SnakeNode* node = (SnakeNode*)malloc(sizeof(SnakeNode));
-	if (node != NULL) {
-		Snake newSnake = { bit.x, bit.y };
+struct SnakeNode* AddSnakeBit(struct Snake bit) {
+	struct SnakeNode* node = (struct SnakeNode*)malloc(sizeof(struct SnakeNode));
+	if (node) {
+		struct Snake newSnake = { bit.x, bit.y };
 		node->snake = newSnake;
-		node->next = NULL;
+		node->next = 0;
 	}
 	return node;
 }
 
-void AddToTail(SnakeNode* head, Snake newBit) {
-	SnakeNode* temp = head;
+void AddToTail(struct SnakeNode* head, struct Snake newBit) {
+	struct SnakeNode* temp = head;
 	
 	while (temp->next) {
 		temp = temp->next;
@@ -109,7 +110,7 @@ void AddToTail(SnakeNode* head, Snake newBit) {
 	temp->next = AddSnakeBit(newBit);
 }
 
-bool CheckIfOutOfBounds(SnakeNode* head, Direction dir) {
+bool CheckIfOutOfBounds(struct SnakeNode* head, int dir) {
 	// Kill the snake if it hits a wall
 	switch (dir) {
 	case NORTH:
@@ -133,8 +134,8 @@ bool CheckIfOutOfBounds(SnakeNode* head, Direction dir) {
 	return false;
 }
 
-bool CheckIfHittingSelf(SnakeNode* head) {
-	SnakeNode* temp;
+bool CheckIfHittingSelf(struct SnakeNode* head) {
+	struct SnakeNode* temp;
 
 	if (head->next) {
 		temp = head->next;
@@ -152,9 +153,9 @@ void Kill() {
 	dead = true;
 }
 
-void MoveSnake(SnakeNode* head, Direction dir) {
-	SnakeNode* temp = head;
-	Snake prevSnake = head->snake;
+void MoveSnake(struct SnakeNode* head, int dir) {
+	struct SnakeNode* temp = head;
+	struct Snake prevSnake = head->snake;
 
 	if (CheckIfOutOfBounds(head, dir))
 	{
@@ -181,8 +182,8 @@ void MoveSnake(SnakeNode* head, Direction dir) {
 		return;
 	}
 
-	while (temp->next != NULL) {
-		Snake currSnake = temp->next->snake;
+	while (temp->next) {
+		struct Snake currSnake = temp->next->snake;
 		temp->next->snake = prevSnake;
 		prevSnake = currSnake;
 		temp = temp->next;
@@ -199,11 +200,11 @@ void MoveSnake(SnakeNode* head, Direction dir) {
 	
 }
 
-void EmptyList(SnakeNode* head) {
-	SnakeNode* current = head;
-	SnakeNode* next;
+void EmptyList(struct SnakeNode* head) {
+	struct SnakeNode* current = head;
+	struct SnakeNode* next;
 
-	while (current != NULL) {
+	while (current) {
 		next = current->next;
 		free(current);
 		current = next;
@@ -222,8 +223,8 @@ void DrawGrid() {
 void InitValues() {
 	cooldown = 0.2f;
 	timer = cooldown;
-
-	head = AddSnakeBit({ WIDTH / TILE_SIZE / 2, HEIGHT / TILE_SIZE / 2 });
+	struct Snake headBit = { WIDTH / TILE_SIZE / 2, HEIGHT / TILE_SIZE / 2 };
+	head = AddSnakeBit(headBit);
 	*food = GenNewFood();
 
 	currentDir = EAST;
@@ -237,7 +238,7 @@ void InitValues() {
 int main() {
 	InitWindow(WIDTH, HEIGHT, TITLE);
 
-	food = (Food*)malloc(sizeof(Food));
+	food = (struct Food*)malloc(sizeof(struct Food));
 	InitValues();
 
 	while (!WindowShouldClose()) {
@@ -246,7 +247,7 @@ int main() {
 		DrawSnake(head);
 		DrawFood(*food);
 		char scoreText[20];
-		sprintf_s(scoreText, "%d", score);
+		sprintf_s(scoreText, sizeof(scoreText), "%d", score);
 		DrawText(scoreText, WIDTH / 2, 10, 24, WHITE);
 		DrawGrid();
 		if (dead) {
