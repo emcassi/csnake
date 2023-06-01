@@ -1,53 +1,33 @@
-#define WIDTH 800
-#define HEIGHT 600
-#define TITLE "Snake"
-
-#define TILE_SIZE 20
-
-#define SNAKE_COLOR GREEN
-
 #include "raylib.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "game.h"
 
-struct Snake {
-	int x, y;
-};
+void InitValues() {
+	cooldown = 0.2f;
+	timer = cooldown;
+	struct Snake headBit = { WIDTH / TILE_SIZE / 2, HEIGHT / TILE_SIZE / 2 };
+	head = AddSnakeBit(headBit);
+	*food = GenNewFood();
 
-struct Food {
-	int x, y;
-};
+	currentDir = EAST;
 
-struct SnakeNode {
-	struct Snake snake;
-	struct SnakeNode* next;
-};
+	dead = false;
+	score = 0;
 
-enum Direction {
-	NORTH,
-	SOUTH,
-	WEST,
-	EAST
-};
+}
 
-float minCooldown = 0.08f;
-float cooldown = 0.2f;
-float timer;
+void DrawBoard() {
+	for (int i = 0; i < WIDTH / TILE_SIZE; i++) {
+		DrawLine(i * TILE_SIZE, 2 * TILE_SIZE, i * TILE_SIZE, HEIGHT, DARKGREEN);
+	}
+	for (int i = 2; i < HEIGHT / TILE_SIZE; i++) {
+		DrawLine(0, i * TILE_SIZE, WIDTH, i * TILE_SIZE, DARKGREEN);
+	}
+}
 
-struct Food* food;
-
-bool dead = false;
-int score = 0;
-
-int currentDir;
-
-struct SnakeNode* head;
-
-
-void DrawFood(struct Food food) {
-	int size = (int)(TILE_SIZE * 0.5);
-
-	DrawRectangle(food.x * TILE_SIZE + size / 2, food.y * TILE_SIZE + size / 2, size, size, ORANGE);
+void Kill() {
+	dead = true;
 }
 
 struct Food GenNewFood() {
@@ -61,6 +41,32 @@ struct Food GenNewFood() {
 	return newFood;
 }
 
+void DrawFood(struct Food food) {
+	int size = (int)(TILE_SIZE * 0.5);
+
+	DrawRectangle(food.x * TILE_SIZE + size / 2, food.y * TILE_SIZE + size / 2, size, size, ORANGE);
+}
+
+struct SnakeNode* AddSnakeBit(struct Snake bit) {
+	struct SnakeNode* node = (struct SnakeNode*)malloc(sizeof(struct SnakeNode));
+	if (node) {
+		struct Snake newSnake = { bit.x, bit.y };
+		node->snake = newSnake;
+		node->next = 0;
+	}
+	return node;
+}
+
+void AddToTail(struct SnakeNode* head, struct Snake newBit) {
+	struct SnakeNode* temp = head;
+
+	while (temp->next) {
+		temp = temp->next;
+	}
+
+	temp->next = AddSnakeBit(newBit);
+}
+
 int GetCount(struct SnakeNode* head) {
 	int count = 0;
 	struct SnakeNode* current = head;
@@ -71,6 +77,64 @@ int GetCount(struct SnakeNode* head) {
 	}
 
 	return count;
+}
+
+void EmptyList(struct SnakeNode* head) {
+	struct SnakeNode* current = head;
+	struct SnakeNode* next;
+
+	while (current) {
+		next = current->next;
+		free(current);
+		current = next;
+	}
+}
+
+void MoveSnake(struct SnakeNode* head, int dir) {
+	struct SnakeNode* temp = head;
+	struct Snake prevSnake = head->snake;
+
+	if (CheckIfOutOfBounds(head, dir))
+	{
+		Kill();
+		return;
+	}
+	switch (dir) {
+	case NORTH:
+		head->snake.y -= 1;
+		break;
+	case SOUTH:
+		head->snake.y += 1;
+		break;
+	case WEST:
+		head->snake.x -= 1;
+		break;
+	case EAST:
+		head->snake.x += 1;
+		break;
+	}
+
+	if (CheckIfHittingSelf(head)) {
+		Kill();
+		return;
+	}
+
+	while (temp->next) {
+		struct Snake currSnake = temp->next->snake;
+		temp->next->snake = prevSnake;
+		prevSnake = currSnake;
+		temp = temp->next;
+	}
+
+	if (head->snake.x == food->x && head->snake.y == food->y) {
+		AddToTail(head, temp->snake);
+		*food = GenNewFood();
+		cooldown *= 0.95f;
+		if (cooldown < minCooldown)
+			cooldown = minCooldown;
+		score++;
+	}
+
 }
 
 void DrawSnakeBit(struct SnakeNode* node) {
@@ -87,27 +151,6 @@ void DrawSnake(struct SnakeNode* head) {
 		else
 			break;
 	}
-}
-
-
-struct SnakeNode* AddSnakeBit(struct Snake bit) {
-	struct SnakeNode* node = (struct SnakeNode*)malloc(sizeof(struct SnakeNode));
-	if (node) {
-		struct Snake newSnake = { bit.x, bit.y };
-		node->snake = newSnake;
-		node->next = 0;
-	}
-	return node;
-}
-
-void AddToTail(struct SnakeNode* head, struct Snake newBit) {
-	struct SnakeNode* temp = head;
-	
-	while (temp->next) {
-		temp = temp->next;
-	}
-
-	temp->next = AddSnakeBit(newBit);
 }
 
 bool CheckIfOutOfBounds(struct SnakeNode* head, int dir) {
@@ -149,97 +192,14 @@ bool CheckIfHittingSelf(struct SnakeNode* head) {
 	return false;
 }
 
-void Kill() {
-	dead = true;
-}
-
-void MoveSnake(struct SnakeNode* head, int dir) {
-	struct SnakeNode* temp = head;
-	struct Snake prevSnake = head->snake;
-
-	if (CheckIfOutOfBounds(head, dir))
-	{
-		Kill();
-		return;
-	}
-	switch (dir) {
-		case NORTH:
-			head->snake.y -= 1;
-			break;
-		case SOUTH:
-			head->snake.y += 1;
-			break;
-		case WEST:
-			head->snake.x -= 1;
-			break;
-		case EAST:
-			head->snake.x += 1;
-			break;
-	}
-
-	if (CheckIfHittingSelf(head)) {
-		Kill();
-		return;
-	}
-
-	while (temp->next) {
-		struct Snake currSnake = temp->next->snake;
-		temp->next->snake = prevSnake;
-		prevSnake = currSnake;
-		temp = temp->next;
-	}
-
-	if (head->snake.x == food->x && head->snake.y == food->y) {
-		AddToTail(head, temp->snake);
-		*food = GenNewFood();
-		cooldown *= 0.95f;
-		if (cooldown < minCooldown)
-			cooldown = minCooldown;
-		score++;
-	}
-	
-}
-
-void EmptyList(struct SnakeNode* head) {
-	struct SnakeNode* current = head;
-	struct SnakeNode* next;
-
-	while (current) {
-		next = current->next;
-		free(current);
-		current = next;
-	}
-}
-
-void DrawGrid() {
-	for (int i = 0; i < WIDTH / TILE_SIZE; i++) {
-		DrawLine(i * TILE_SIZE, 2 * TILE_SIZE, i * TILE_SIZE, HEIGHT, DARKGREEN);
-	}
-	for (int i = 2; i < HEIGHT / TILE_SIZE; i++) {
-		DrawLine(0, i * TILE_SIZE, WIDTH, i * TILE_SIZE, DARKGREEN);
-	}
-}
-
-void InitValues() {
-	cooldown = 0.2f;
-	timer = cooldown;
-	struct Snake headBit = { WIDTH / TILE_SIZE / 2, HEIGHT / TILE_SIZE / 2 };
-	head = AddSnakeBit(headBit);
-	*food = GenNewFood();
-
-	currentDir = EAST;
-
-	dead = false;
-	score = 0;
-
-}
-
-
 int main() {
 	InitWindow(WIDTH, HEIGHT, TITLE);
 
 	food = (struct Food*)malloc(sizeof(struct Food));
 	InitValues();
+
+	int goWidth = MeasureText(gameOverMessage, 50);
+	int deetsWidth = MeasureText(deetsMessage, 28);
 
 	while (!WindowShouldClose()) {
 		BeginDrawing();
@@ -249,13 +209,9 @@ int main() {
 		char scoreText[20];
 		sprintf_s(scoreText, sizeof(scoreText), "%d", score);
 		DrawText(scoreText, WIDTH / 2, 10, 24, WHITE);
-		DrawGrid();
+		DrawBoard();
 		if (dead) {
-			const char* goMessage = "GAME OVER";
-			int goWidth = MeasureText(goMessage, 50);
-			DrawText(goMessage, WIDTH / 2 - goWidth / 2, HEIGHT / 2 - 48, 48, YELLOW);
-			const char* deetsMessage = "Press Space to Retry";
-			int deetsWidth = MeasureText(deetsMessage, 28);
+			DrawText(gameOverMessage, WIDTH / 2 - goWidth / 2, HEIGHT / 2 - 48, 48, YELLOW);
 			DrawText(deetsMessage, WIDTH / 2 - deetsWidth / 2, HEIGHT / 2 + 100, 26, WHITE);
 		}
 		EndDrawing();
